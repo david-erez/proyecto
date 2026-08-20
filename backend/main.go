@@ -1,54 +1,49 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"log"
 	"net/http"
-	"time"
 
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"backend/config"
+	"backend/db"
+	"backend/handlers"
+	"backend/repository"
+	"backend/services"
 )
 
-type Response struct {
-	Message string `json:"message"`
-}
-
 func main() {
+	cfg := config.Load()
 
-	mongoURI := "mongodb://mongodb:27017"
+	client := db.Connect(cfg.MongoURI)
 
-	client, err := mongo.Connect(options.Client().ApplyURI(mongoURI))
-	if err != nil {
-		log.Fatal("Error conectando a MongoDB:", err)
-	}
+	repo := repository.NewConversionRepository(client, cfg.DatabaseName)
+	service := services.NewConversionService(repo)
+	handler := handlers.NewConversionHandler(service)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	mux := http.NewServeMux()
 
-	err = client.Ping(ctx, nil)
-	if err != nil {
-	log.Fatal("MongoDB no responde:", err)
-	}
+	mux.HandleFunc("/api/upload", handler.Upload)
+	mux.HandleFunc("/api/conversions", handler.List)
 
-	log.Println("Conexión con MongoDB establecida correctamente")
+	log.Println("Backend ejecutándose en el puerto " + cfg.Port)
 
-	http.HandleFunc("/api/hello", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-
-		response := Response{
-			Message: "Backend Go conectado correctamente con MongoDB",
-		}
-
-		json.NewEncoder(w).Encode(response)
-	})
-	log.Println("Backend ejecutándose en el puerto 8080")
-
-	err = http.ListenAndServe(":8080", nil)
-
+	err := http.ListenAndServe(":"+cfg.Port, withCORS(mux))
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
