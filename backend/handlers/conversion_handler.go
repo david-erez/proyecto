@@ -17,6 +17,58 @@ type ConversionHandler struct {
 	service *services.ConversionService
 }
 
+type replaceRequest struct {
+	Filename string `json:"filename"`
+	Type     string `json:"type"`
+}
+
+type patchRequest struct {
+	FileName *string `json:"filename"`
+	Type     *string `json:"type"`
+}
+
+func (h *ConversionHandler) Replace(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	var req replaceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "JSON invalido")
+		return
+	}
+
+	record, err := h.service.UpdateConversion(r.Context(), id, req.Filename, req.Type)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, record)
+}
+
+func (h *ConversionHandler) PartialUpdate(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var req patchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "JSON invalido")
+		return
+	}
+	record, err := h.service.UpdateTan(r.Context(), id, req.FileName, req.Type)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, record)
+}
+
+func (h *ConversionHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+
+	err := h.service.DeleteConversion(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "Convertion no found")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
 func NewConversionHandler(service *services.ConversionService) *ConversionHandler {
 	return &ConversionHandler{service: service}
 }

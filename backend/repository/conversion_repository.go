@@ -7,6 +7,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type ConversionRepository struct {
@@ -59,4 +60,51 @@ func (r *ConversionRepository) FindByID(ctx context.Context, id string) (models.
 	}
 
 	return record, nil
+}
+
+func (r *ConversionRepository) UpdateByID(ctx context.Context, id string, update bson.M) (models.ConversionRecord, error) {
+	oid, err := bson.ObjectIDFromHex(id)
+
+	if err != nil {
+		return models.ConversionRecord{}, err
+
+	}
+
+	filter := bson.M{"_id": oid}
+	updateDoc := bson.M{"$set": update}
+
+	result := r.collection.FindOneAndUpdate(
+		ctx,
+		filter,
+		updateDoc,
+		options.FindOneAndUpdate().SetReturnDocument(options.After),
+	)
+
+	var record models.ConversionRecord
+	if err := result.Decode(&record); err != nil {
+		return models.ConversionRecord{}, err
+
+	}
+
+	return record, nil
+
+}
+
+func (r *ConversionRepository) DeleteByID(ctx context.Context, id string) error {
+	oid, err := bson.ObjectIDFromHex(id)
+
+	if err != nil {
+		return err
+	}
+
+	result, err := r.collection.DeleteOne(ctx, bson.M{"_id": oid})
+	if err != nil {
+		return err
+	}
+
+	if result.DeletedCount == 0 {
+		return mongo.ErrNoDocuments
+	}
+
+	return nil
 }
