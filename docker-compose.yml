@@ -12,6 +12,22 @@ services:
       - backend
     networks:
       - proyecto-network
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok-tunnel
+    restart: always
+    environment:
+      NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+    command:
+      - "http"
+      - "--url=cartwheel-flint-heftiness.ngrok-free.dev"
+      - "nginx-proxy:80"
+      - "--log=stdout"
+      - "--log-level=debug"
+    depends_on:
+      - nginx
+    networks:
+      - proyecto-network
 
   frontend:
     build:
