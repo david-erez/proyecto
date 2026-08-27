@@ -24,6 +24,9 @@ func main() {
 
 	mux.HandleFunc("/api/upload", handler.Upload)
 	mux.HandleFunc("/api/conversions", handler.List)
+	mux.HandleFunc("PUT /api/conversions/{id}", handler.Replace)
+	mux.HandleFunc("PATCH /api/conversions/{id}", handler.PartialUpdate)
+	mux.HandleFunc("DELETE /api/conversions/{id}", handler.Delete)
 
 	log.Println("Backend ejecutándose en el puerto " + cfg.Port)
 
