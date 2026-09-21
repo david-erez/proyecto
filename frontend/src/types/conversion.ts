@@ -7,3 +7,8 @@ export interface ConversionRecord {
   result: string;
   createdAt: string;
 }
+
+export interface ConversionUpdate {
+  filename?: string;
+  type?: ConversionType;
+}
